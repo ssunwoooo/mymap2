@@ -6,22 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>버스 정류장 및 터미널 검색</title>
 
-    <!-- 카카오맵 SDK와 장소 검색 라이브러리 불러오기 -->
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=c93a62ed63bfb3b516b4d5e7c03257db&libraries=services&autoload=false"></script>
-
     <style>
-        /* 모든 요소의 크기 계산 방식을 통일 */
+        /* 모든 요소의 크기 계산 방식 통일 */
         * {
             box-sizing: border-box;
         }
 
-        /* 페이지 기본 설정 */
         body {
             margin: 0;
             font-family: Arial, "Malgun Gothic", sans-serif;
         }
 
-        /* 화면을 좌우 2분할 */
+        /* 화면 좌우 2분할 */
         .container {
             display: flex;
             width: 100%;
@@ -30,16 +26,15 @@
 
         /* 왼쪽 검색 영역 */
         .sidebar {
+            display: flex;
+            flex-direction: column;
             width: 360px;
             min-width: 300px;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
             border-right: 1px solid #dddddd;
+            background: white;
         }
 
-        /* 제목 */
         h1 {
             margin: 0 0 18px;
             font-size: 23px;
@@ -57,38 +52,32 @@
             padding: 12px 5px;
             border: 1px solid #dddddd;
             border-radius: 8px;
-            background-color: #f5f5f5;
+            background: #f5f5f5;
             cursor: pointer;
             font-size: 14px;
         }
 
-        /* 선택된 탭 */
         .tab-button.active {
-            background-color: #fee500;
             border-color: #e8d200;
+            background: #fee500;
             font-weight: bold;
         }
 
         /* 현재 위치 버튼 */
         #locationButton {
-            width: 100%;
             padding: 11px;
             border: 1px solid #dddddd;
             border-radius: 8px;
-            background-color: #ffffff;
+            background: white;
             cursor: pointer;
         }
 
-        #locationButton:hover {
-            background-color: #f5f5f5;
-        }
-
-        /* 상태 안내 문구 */
         #status {
             margin: 15px 0 10px;
-            color: #666666;
+            color: #555555;
             font-size: 13px;
             line-height: 1.6;
+            overflow-wrap: anywhere;
         }
 
         /* 검색 결과 목록 */
@@ -98,20 +87,19 @@
             overflow-y: auto;
         }
 
-        /* 검색 결과 항목 */
         .place-item {
             padding: 13px 8px;
             border-bottom: 1px solid #eeeeee;
-            cursor: pointer;
             border-radius: 5px;
+            cursor: pointer;
         }
 
         .place-item:hover {
-            background-color: #f8f8f8;
+            background: #f8f8f8;
         }
 
         .place-item.selected {
-            background-color: #fff9cc;
+            background: #fff9cc;
         }
 
         .place-name {
@@ -139,10 +127,9 @@
             flex: 1;
             min-width: 0;
             height: 100%;
-            background-color: #eeeeee;
+            background: #eeeeee;
         }
 
-        /* 작은 화면에서도 검색 영역을 표시 */
         @media (max-width: 600px) {
             .sidebar {
                 width: 42%;
@@ -169,21 +156,21 @@
 <body>
     <div class="container">
 
-        <!-- 왼쪽: 탭과 검색 결과 -->
+        <!-- 왼쪽: 검색 탭과 검색 결과 -->
         <aside class="sidebar">
             <h1>🚌 버스 검색</h1>
 
             <div class="tab-container">
                 <button
-                    class="tab-button active"
                     id="stopTab"
+                    class="tab-button active"
                     aria-pressed="true">
                     버스 정류장
                 </button>
 
                 <button
-                    class="tab-button"
                     id="terminalTab"
+                    class="tab-button"
                     aria-pressed="false">
                     버스 터미널
                 </button>
@@ -194,15 +181,21 @@
             </button>
 
             <p id="status" role="status" aria-live="polite">
-                지도를 불러오는 중입니다...
+                카카오맵을 불러오는 중입니다...
             </p>
 
             <div id="results"></div>
         </aside>
 
-        <!-- 오른쪽: 카카오맵 -->
+        <!-- 오른쪽: 지도 -->
         <main id="map"></main>
     </div>
+
+    <!-- 카카오맵 SDK: 오류 발생 시 안내 메시지 표시 -->
+    <script
+        src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=c93a62ed63bfb3b516b4d5e7c03257db&libraries=services&autoload=false"
+        onerror="showSdkError()">
+    </script>
 
     <script>
         // 지도와 검색 기능에 필요한 변수
@@ -210,16 +203,18 @@
         let places;
         let currentOverlay;
         let infoWindow;
+        let busImage;
 
-        // 검색 결과 마커와 장소 정보를 저장
+        // 검색 결과 마커와 장소 정보
         let resultMarkers = [];
         let currentPlaces = [];
 
-        // 현재 선택한 탭
+        // 현재 선택된 탭
         let selectedType = "stop";
 
-        // 지도 준비 여부
+        // 지도 초기화 여부와 검색 요청 번호
         let isMapReady = false;
+        let searchRequestId = 0;
 
         // 기본 위치: 서울시청
         let currentLatitude = 37.5665;
@@ -232,29 +227,22 @@
         const statusText = document.getElementById("status");
         const resultsContainer = document.getElementById("results");
 
-        // 버스 모양 마커 이미지 주소
-        const busImageUrl =
-            "https://upload.wikimedia.org/wikipedia/commons/4/4b/Bus_icon_black_and_transparent_background.svg";
+        // SDK 파일을 불러오지 못했을 때 실행
+        function showSdkError() {
+            statusText.textContent =
+                "카카오맵 SDK를 불러오지 못했습니다. 인터넷 연결과 JavaScript 키, 웹 도메인 설정을 확인해 주세요.";
+        }
 
-        // 지도에 표시할 버스 마커 이미지 설정
-        const busImage = new kakao.maps.MarkerImage(
-            busImageUrl,
-            new kakao.maps.Size(32, 32),
-            {
-                offset: new kakao.maps.Point(16, 16)
-            }
-        );
-
-        // 카카오맵 SDK가 준비된 후 지도 생성
-        kakao.maps.load(function () {
+        // 지도 SDK 준비 후 초기화
+        function initializeMap() {
             try {
-                // 기본 지도 중심 좌표
+                // 지도 중심 좌표 설정
                 const center = new kakao.maps.LatLng(
                     currentLatitude,
                     currentLongitude
                 );
 
-                // 지도 생성 및 확대 레벨 설정
+                // 지도 생성: 확대 레벨 5
                 map = new kakao.maps.Map(
                     document.getElementById("map"),
                     {
@@ -266,10 +254,22 @@
                 // 장소 검색 서비스 생성
                 places = new kakao.maps.services.Places();
 
-                // 마커 클릭 시 장소 정보를 표시하는 창
+                // 장소 정보를 표시할 팝업 생성
                 infoWindow = new kakao.maps.InfoWindow({
                     zIndex: 10
                 });
+
+                // 버스 아이콘은 SDK가 준비된 뒤 생성
+                const busImageUrl =
+                    "https://upload.wikimedia.org/wikipedia/commons/4/4b/Bus_icon_black_and_transparent_background.svg";
+
+                busImage = new kakao.maps.MarkerImage(
+                    busImageUrl,
+                    new kakao.maps.Size(32, 32),
+                    {
+                        offset: new kakao.maps.Point(16, 16)
+                    }
+                );
 
                 // 현재 위치를 표시하는 파란색 원형 마커
                 currentOverlay = new kakao.maps.CustomOverlay({
@@ -288,22 +288,44 @@
 
                 currentOverlay.setMap(map);
 
-                // 지도 준비 완료
+                // 모든 초기화가 끝난 뒤 검색 기능 활성화
                 isMapReady = true;
 
-                // 현재 위치 확인 후 주변 장소 검색
+                statusText.textContent =
+                    "현재 위치를 확인하고 있습니다.";
+
+                // 현재 위치 확인 후 주변 검색
                 getCurrentLocation();
 
             } catch (error) {
-                console.error("지도 생성 오류:", error);
+                console.error("지도 초기화 오류:", error);
 
                 statusText.textContent =
-                    "지도를 불러오지 못했습니다. 카카오 키와 도메인 설정을 확인해 주세요.";
+                    "지도 초기화에 실패했습니다. F12의 Console에서 오류를 확인해 주세요.";
             }
-        });
+        }
+
+        // SDK를 불러오고 초기화
+        if (typeof kakao !== "undefined" && kakao.maps) {
+            kakao.maps.load(initializeMap);
+        } else {
+            showSdkError();
+        }
+
+        // SDK가 인증 오류 등으로 초기화되지 않을 경우 안내
+        setTimeout(function () {
+            if (!isMapReady &&
+                statusText.textContent ===
+                "카카오맵을 불러오는 중입니다...") {
+                statusText.textContent =
+                    "지도가 아직 준비되지 않았습니다. JavaScript 키, 웹 도메인 설정과 F12 Console 오류를 확인해 주세요.";
+            }
+        }, 10000);
 
         // 현재 위치를 확인하는 함수
         function getCurrentLocation() {
+            if (!isMapReady) return;
+
             if (!navigator.geolocation) {
                 statusText.textContent =
                     "위치 기능을 지원하지 않아 서울시청 주변을 검색합니다.";
@@ -312,12 +334,12 @@
                 return;
             }
 
-            statusText.textContent = "현재 위치를 확인하고 있습니다.";
+            statusText.textContent =
+                "현재 위치를 확인하고 있습니다.";
 
-            // 브라우저의 위치 권한 요청
             navigator.geolocation.getCurrentPosition(
                 function (position) {
-                    // 현재 위도와 경도 저장
+                    // 현재 위치의 위도와 경도 저장
                     currentLatitude = position.coords.latitude;
                     currentLongitude = position.coords.longitude;
 
@@ -326,7 +348,7 @@
                         currentLongitude
                     );
 
-                    // 지도와 현재 위치 마커 이동
+                    // 지도와 현재 위치 표시 이동
                     map.setCenter(positionPoint);
                     currentOverlay.setPosition(positionPoint);
 
@@ -338,9 +360,9 @@
                     console.warn("현재 위치 확인 실패:", error.message);
 
                     statusText.textContent =
-                        "위치를 확인하지 못해 서울시청 주변을 검색합니다.";
+                        "현재 위치를 확인하지 못해 서울시청 주변을 검색합니다.";
 
-                    // 위치 확인에 실패하면 기본 위치 사용
+                    // 위치 확인 실패 시 기본 위치 사용
                     searchNearbyPlaces();
                 },
 
@@ -352,13 +374,11 @@
             );
         }
 
-        // 선택한 탭에 맞는 검색어 반환
+        // 선택된 탭에 따라 검색어 결정
         function getSearchKeyword() {
-            if (selectedType === "stop") {
-                return "버스 정류장";
-            }
-
-            return "버스 터미널";
+            return selectedType === "stop"
+                ? "버스 정류장"
+                : "버스 터미널";
         }
 
         // 기존 검색 결과와 마커 삭제
@@ -370,22 +390,21 @@
             resultMarkers = [];
             currentPlaces = [];
 
-            // 왼쪽 검색 목록 비우기
             resultsContainer.replaceChildren();
 
-            // 이전 팝업 닫기
             if (infoWindow) {
                 infoWindow.close();
             }
         }
 
-        // 현재 위치 주변의 장소 검색
+        // 주변 버스 장소 검색
         function searchNearbyPlaces() {
-            if (!isMapReady || !places) {
-                return;
-            }
+            if (!isMapReady || !places) return;
 
-            // 기존 결과를 먼저 제거
+            // 새로운 검색 요청 번호 생성
+            const requestId = ++searchRequestId;
+
+            // 기존 결과 지우기
             clearResults();
 
             const keyword = getSearchKeyword();
@@ -393,24 +412,23 @@
             statusText.textContent =
                 keyword + "을(를) 검색하고 있습니다...";
 
-            // 현재 위치를 검색 중심으로 지정
             const searchCenter = new kakao.maps.LatLng(
                 currentLatitude,
                 currentLongitude
             );
 
-            // 카카오맵 키워드 검색 실행
+            // 현재 위치 기준 반경 5km 검색
             places.keywordSearch(
                 keyword,
                 function (data, status) {
-                    // 검색 결과가 있는 경우
+                    // 이전 검색의 늦은 응답은 무시
+                    if (requestId !== searchRequestId) return;
+
                     if (status === kakao.maps.services.Status.OK) {
                         // 가까운 장소부터 정렬
                         data.sort(function (a, b) {
-                            const distanceA = Number(a.distance || Infinity);
-                            const distanceB = Number(b.distance || Infinity);
-
-                            return distanceA - distanceB;
+                            return Number(a.distance || Infinity) -
+                                Number(b.distance || Infinity);
                         });
 
                         currentPlaces = data;
@@ -429,7 +447,7 @@
 
                     } else {
                         statusText.textContent =
-                            "검색에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+                            "검색에 실패했습니다. F12 Console에서 오류를 확인해 주세요.";
                     }
                 },
                 {
@@ -441,18 +459,18 @@
             );
         }
 
-        // 검색 결과를 버스 마커와 목록으로 표시
+        // 검색 결과를 버스 마커와 목록에 표시
         function displayPlaces(placesData) {
             resultsContainer.replaceChildren();
 
             placesData.forEach(function (place) {
-                // 검색 결과의 좌표
+                // 검색 장소의 좌표
                 const position = new kakao.maps.LatLng(
                     Number(place.y),
                     Number(place.x)
                 );
 
-                // 버스 아이콘을 사용하는 마커 생성
+                // 버스 이미지가 적용된 마커 생성
                 const placeMarker = new kakao.maps.Marker({
                     map: map,
                     position: position,
@@ -460,10 +478,9 @@
                     image: busImage
                 });
 
-                // 마커를 배열에 저장
                 resultMarkers.push(placeMarker);
 
-                // 왼쪽 검색 목록 항목 생성
+                // 왼쪽 목록 항목 생성
                 const item = document.createElement("div");
                 item.className = "place-item";
 
@@ -481,7 +498,7 @@
                 item.appendChild(name);
                 item.appendChild(address);
 
-                // 장소와 현재 위치 사이의 거리를 표시
+                // 거리 정보가 있으면 함께 표시
                 if (place.distance) {
                     const distance = document.createElement("div");
                     distance.className = "place-distance";
@@ -496,7 +513,7 @@
                     item.appendChild(distance);
                 }
 
-                // 목록 또는 마커를 클릭했을 때 실행
+                // 장소를 선택했을 때 실행할 함수
                 function selectPlace() {
                     const selectedPosition = new kakao.maps.LatLng(
                         Number(place.y),
@@ -506,7 +523,7 @@
                     // 선택한 장소로 지도 이동
                     map.panTo(selectedPosition);
 
-                    // 이전 선택 항목의 배경색 제거
+                    // 이전 선택 항목의 강조 표시 제거
                     document.querySelectorAll(".place-item").forEach(
                         function (element) {
                             element.classList.remove("selected");
@@ -515,9 +532,8 @@
 
                     item.classList.add("selected");
 
-                    // 장소 이름과 주소를 팝업에 표시
+                    // 팝업 내용 생성
                     const popupContent = document.createElement("div");
-
                     popupContent.style.cssText =
                         "padding:10px;max-width:230px;" +
                         "font-size:13px;line-height:1.6;";
@@ -534,6 +550,7 @@
                     popupContent.appendChild(popupName);
                     popupContent.appendChild(popupAddress);
 
+                    // 선택한 마커에 팝업 표시
                     infoWindow.setContent(popupContent);
                     infoWindow.open(map, placeMarker);
 
@@ -541,65 +558,52 @@
                         place.place_name + " 위치를 표시했습니다.";
                 }
 
-                // 왼쪽 목록을 클릭하면 장소로 이동
+                // 목록 클릭 시 해당 장소로 이동
                 item.addEventListener("click", selectPlace);
 
-                // 지도 마커를 클릭해도 팝업 표시
+                // 버스 마커 클릭 시 장소 정보 표시
                 kakao.maps.event.addListener(
                     placeMarker,
                     "click",
                     selectPlace
                 );
 
-                // 목록에 검색 결과 추가
                 resultsContainer.appendChild(item);
             });
         }
 
         // 버스 정류장 탭 클릭
         stopTab.addEventListener("click", function () {
-            if (selectedType === "stop") {
-                return;
-            }
+            if (selectedType === "stop") return;
 
             selectedType = "stop";
 
-            // 탭의 선택 상태 변경
             stopTab.classList.add("active");
             terminalTab.classList.remove("active");
 
             stopTab.setAttribute("aria-pressed", "true");
             terminalTab.setAttribute("aria-pressed", "false");
 
-            // 이전 결과를 지우고 정류장 검색
             searchNearbyPlaces();
         });
 
         // 버스 터미널 탭 클릭
         terminalTab.addEventListener("click", function () {
-            if (selectedType === "terminal") {
-                return;
-            }
+            if (selectedType === "terminal") return;
 
             selectedType = "terminal";
 
-            // 탭의 선택 상태 변경
             terminalTab.classList.add("active");
             stopTab.classList.remove("active");
 
             terminalTab.setAttribute("aria-pressed", "true");
             stopTab.setAttribute("aria-pressed", "false");
 
-            // 이전 결과를 지우고 터미널 검색
             searchNearbyPlaces();
         });
 
-        // 현재 위치 버튼 클릭 시 위치 다시 확인
+        // 현재 위치 버튼 클릭
         locationButton.addEventListener("click", function () {
-            if (!isMapReady) {
-                return;
-            }
-
             getCurrentLocation();
         });
     </script>
