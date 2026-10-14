@@ -7,9 +7,7 @@
   <title>버스 정류장 지도</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -29,7 +27,7 @@
       min-width: 280px;
       display: flex;
       flex-direction: column;
-      background: #fff;
+      background: white;
       border-right: 1px solid #ddd;
     }
 
@@ -51,8 +49,8 @@
 
     .tabs {
       display: flex;
-      padding: 12px 12px 0;
       gap: 8px;
+      padding: 12px 12px 0;
     }
 
     .tab {
@@ -62,7 +60,6 @@
       border-radius: 8px 8px 0 0;
       background: #f7f7f7;
       cursor: pointer;
-      font-size: 14px;
     }
 
     .tab.active {
@@ -89,7 +86,7 @@
 
     #searchButton {
       padding: 0 13px;
-      border: none;
+      border: 0;
       border-radius: 7px;
       background: #1677e8;
       color: white;
@@ -142,6 +139,31 @@
       height: 100%;
     }
 
+    /* 버스 아이콘 마커 */
+    .bus-marker {
+      width: 42px;
+      height: 49px;
+      cursor: pointer;
+      filter: drop-shadow(0 2px 2px #0003);
+    }
+
+    .bus-marker svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 현재 위치 마커 */
+    .my-location-marker {
+      width: 30px;
+      height: 30px;
+      border: 4px solid white;
+      border-radius: 50%;
+      background: #1677e8;
+      box-shadow: 0 0 0 5px #1677e833,
+                  0 2px 6px #0003;
+    }
+
     .legend {
       position: absolute;
       z-index: 5;
@@ -166,14 +188,13 @@
     }
 
     .legend-bus {
-      width: 22px;
-      height: 22px;
-      object-fit: contain;
+      width: 23px;
+      height: 27px;
     }
 
     .legend-location {
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       border: 3px solid white;
       border-radius: 50%;
       background: #1677e8;
@@ -200,31 +221,12 @@
         min-width: 155px;
       }
 
-      .header {
-        padding: 14px 10px 10px;
-      }
-
-      h1 {
-        font-size: 17px;
-      }
-
-      .description {
-        font-size: 11px;
-      }
-
-      .tabs {
-        padding: 8px 6px 0;
-        gap: 4px;
-      }
-
-      .tab {
-        padding: 9px 3px;
-        font-size: 12px;
-      }
-
-      .search-area {
-        padding: 8px 6px;
-      }
+      .header { padding: 14px 10px 10px; }
+      h1 { font-size: 17px; }
+      .description { font-size: 11px; }
+      .tabs { padding: 8px 6px 0; gap: 4px; }
+      .tab { padding: 9px 3px; font-size: 12px; }
+      .search-area { padding: 8px 6px; }
 
       #searchInput {
         padding: 8px 5px;
@@ -236,17 +238,9 @@
         font-size: 12px;
       }
 
-      .result-item {
-        padding: 10px 8px;
-      }
-
-      .place-name {
-        font-size: 13px;
-      }
-
-      .place-address {
-        font-size: 11px;
-      }
+      .result-item { padding: 10px 8px; }
+      .place-name { font-size: 13px; }
+      .place-address { font-size: 11px; }
 
       .legend {
         bottom: 10px;
@@ -260,7 +254,6 @@
 
 <body>
   <div class="container">
-
     <aside class="sidebar">
       <div class="header">
         <h1>🚌 버스 찾기</h1>
@@ -270,27 +263,21 @@
       </div>
 
       <div class="tabs">
-        <button class="tab active"
-                data-keyword="버스정류장">
+        <button class="tab active" data-keyword="버스정류장">
           버스 정류장
         </button>
-
-        <button class="tab"
-                data-keyword="버스터미널">
+        <button class="tab" data-keyword="버스터미널">
           버스 터미널
         </button>
       </div>
 
       <div class="search-area">
-        <input
-          id="searchInput"
-          type="text"
-          placeholder="장소 이름 검색"
-        >
+        <input id="searchInput" type="text"
+               placeholder="장소 이름 검색">
         <button id="searchButton">검색</button>
       </div>
 
-      <div id="status">지도를 준비하고 있어요...</div>
+      <div id="status">지도를 불러오는 중...</div>
       <div id="resultList"></div>
     </aside>
 
@@ -299,86 +286,58 @@
 
       <div class="legend">
         <div class="legend-item">
-          <img id="busLegend" class="legend-bus" alt="버스">
+          <div class="legend-bus" id="busLegend"></div>
           <span>버스 정류장</span>
         </div>
-
         <div class="legend-item">
           <span class="legend-location"></span>
           <span>내 위치</span>
         </div>
       </div>
     </main>
-
   </div>
 
   <!-- 카카오 지도 API -->
-  <script
-    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=c93a62ed63bfb3b516b4d5e7c03257db&libraries=services">
-  </script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=c93a62ed63bfb3b516b4d5e7c03257db&libraries=services"></script>
 
   <script>
-    // 지도와 검색에 사용할 변수
     let map;
     let places;
     let currentMarker = null;
     let currentPosition = null;
     let currentInfoWindow = null;
-
     let resultMarkers = [];
     let selectedKeyword = "버스정류장";
     let searchRequestId = 0;
 
-    // 버스 아이콘 이미지 만들기
-    // 별도 이미지 파일 없이 코드 안에서 생성한다.
+    // 버스 마커에 표시할 SVG 이미지
     const busSvg = `
       <svg xmlns="http://www.w3.org/2000/svg"
            width="48" height="56" viewBox="0 0 48 56">
-        <path d="M24 1 C11 1 2 11 2 24
-                 C2 39 24 55 24 55
-                 S46 39 46 24 C46 11 37 1 24 1Z"
-              fill="#1677e8" stroke="white" stroke-width="2"/>
-        <rect x="11" y="11" width="26" height="29"
-              rx="5" fill="white"/>
-        <rect x="15" y="15" width="18" height="11"
-              rx="2" fill="#1677e8"/>
-        <rect x="15" y="29" width="18" height="5"
+        <path d="M24 2 C11 2 3 11 3 24
+                 C3 38 24 54 24 54
+                 S45 38 45 24 C45 11 37 2 24 2Z"
+              fill="#1677e8" stroke="#ffffff" stroke-width="2"/>
+        <rect x="12" y="12" width="24" height="27"
+              rx="4" fill="#ffffff"/>
+        <rect x="16" y="16" width="16" height="9"
               rx="1" fill="#1677e8"/>
-        <circle cx="17" cy="38" r="2" fill="#1677e8"/>
-        <circle cx="31" cy="38" r="2" fill="#1677e8"/>
+        <rect x="16" y="28" width="16" height="5"
+              rx="1" fill="#1677e8"/>
+        <circle cx="18" cy="37" r="2" fill="#1677e8"/>
+        <circle cx="30" cy="37" r="2" fill="#1677e8"/>
       </svg>
     `;
 
-    // 내 위치 아이콘 만들기
-    const locationSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg"
-           width="40" height="40" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r="17"
-                fill="#1677e8" opacity="0.2"/>
-        <circle cx="20" cy="20" r="10"
-                fill="#1677e8" stroke="white"
-                stroke-width="4"/>
-      </svg>
-    `;
+    // 범례에 버스 아이콘 표시
+    document.getElementById("busLegend").innerHTML = busSvg;
 
-    // SVG를 지도에서 사용할 수 있는 이미지 주소로 변환
-    function svgToDataUrl(svg) {
-      return "data:image/svg+xml;charset=utf-8,"
-        + encodeURIComponent(svg);
-    }
-
-    const busImageUrl = svgToDataUrl(busSvg);
-    const locationImageUrl = svgToDataUrl(locationSvg);
-
-    // 범례에도 버스 아이콘 표시
-    document.getElementById("busLegend").src = busImageUrl;
-
-    // 화면에 상태 안내 표시
+    // 상태 메시지 표시
     function setStatus(message) {
       document.getElementById("status").textContent = message;
     }
 
-    // 검색 결과에 사용한 기존 마커 삭제
+    // 이전 검색 마커와 목록 지우기
     function clearResultMarkers() {
       resultMarkers.forEach(function(marker) {
         marker.setMap(null);
@@ -394,11 +353,10 @@
       document.getElementById("resultList").innerHTML = "";
     }
 
-    // 지도 초기화
+    // 지도 시작
     function startMap() {
       const center = new kakao.maps.LatLng(
-        37.5665,
-        126.9780
+        37.5665, 126.9780
       );
 
       map = new kakao.maps.Map(
@@ -411,16 +369,7 @@
 
       places = new kakao.maps.services.Places();
 
-      // 현재 위치 마커 이미지 설정
-      const locationImage = new kakao.maps.MarkerImage(
-        locationImageUrl,
-        new kakao.maps.Size(40, 40),
-        {
-          offset: new kakao.maps.Point(20, 20)
-        }
-      );
-
-      // 현재 위치를 가져온다.
+      // 현재 위치 가져오기
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           function(position) {
@@ -429,12 +378,17 @@
               position.coords.longitude
             );
 
-            // 현재 위치에 별도 이미지 마커 표시
-            currentMarker = new kakao.maps.Marker({
+            // 내 위치는 파란색 원형 마커로 표시
+            const locationContent = document.createElement("div");
+            locationContent.className = "my-location-marker";
+            locationContent.title = "내 현재 위치";
+
+            currentMarker = new kakao.maps.CustomOverlay({
               map: map,
               position: currentPosition,
-              title: "내 현재 위치",
-              image: locationImage,
+              content: locationContent,
+              xAnchor: 0.5,
+              yAnchor: 0.5,
               zIndex: 10
             });
 
@@ -444,8 +398,9 @@
             searchPlaces();
           },
           function() {
-            // 위치 권한을 허용하지 않아도 지도는 사용할 수 있다.
-            setStatus("현재 위치를 가져오지 못했어요. 서울을 기준으로 검색해요.");
+            setStatus(
+              "현재 위치를 가져오지 못했어요. 서울을 기준으로 검색해요."
+            );
             searchPlaces();
           },
           {
@@ -455,12 +410,12 @@
           }
         );
       } else {
-        setStatus("위치 기능을 지원하지 않는 환경이에요.");
+        setStatus("현재 위치 기능을 지원하지 않는 환경이에요.");
         searchPlaces();
       }
     }
 
-    // 검색 결과 말풍선 만들기
+    // 장소 정보 말풍선 표시
     function openPlaceInfo(place, position) {
       if (currentInfoWindow) {
         currentInfoWindow.close();
@@ -475,7 +430,9 @@
 
       const address = document.createElement("div");
       address.textContent =
-        place.road_address_name || place.address_name || "주소 정보 없음";
+        place.road_address_name ||
+        place.address_name ||
+        "주소 정보 없음";
 
       content.appendChild(name);
       content.appendChild(address);
@@ -488,43 +445,43 @@
       currentInfoWindow.open(map, position);
     }
 
-    // 검색 결과에 버스 이미지 마커를 추가
+    // 버스 마커를 HTML로 생성
+    // 이미지 파일을 별도로 올리지 않아도 표시된다.
     function addResultMarker(place) {
       const position = new kakao.maps.LatLng(
         Number(place.y),
         Number(place.x)
       );
 
-      // 버스 정류장 마커 이미지 설정
-      const busImage = new kakao.maps.MarkerImage(
-        busImageUrl,
-        new kakao.maps.Size(36, 42),
-        {
-          offset: new kakao.maps.Point(18, 42)
-        }
-      );
+      const markerContent = document.createElement("div");
+      markerContent.className = "bus-marker";
+      markerContent.innerHTML = busSvg;
+      markerContent.title = place.place_name;
 
-      const marker = new kakao.maps.Marker({
+      const marker = new kakao.maps.CustomOverlay({
         map: map,
         position: position,
-        title: place.place_name,
-        image: busImage
+        content: markerContent,
+        xAnchor: 0.5,
+        yAnchor: 1,
+        zIndex: 5,
+        clickable: true
       });
 
       resultMarkers.push(marker);
 
-      // 마커를 누르면 장소 정보 표시
-      kakao.maps.event.addListener(marker, "click", function() {
+      // 버스 아이콘을 누르면 장소 정보 표시
+      markerContent.addEventListener("click", function(event) {
+        event.stopPropagation();
         openPlaceInfo(place, position);
       });
 
       return marker;
     }
 
-    // 검색 결과 목록에 장소 추가
+    // 왼쪽 검색 결과 목록에 장소 추가
     function addResultItem(place, marker) {
       const list = document.getElementById("resultList");
-
       const item = document.createElement("div");
       item.className = "result-item";
 
@@ -535,18 +492,18 @@
       const address = document.createElement("div");
       address.className = "place-address";
       address.textContent =
-        place.road_address_name || place.address_name || "주소 정보 없음";
+        place.road_address_name ||
+        place.address_name ||
+        "주소 정보 없음";
 
       item.appendChild(name);
       item.appendChild(address);
 
-      // 목록을 누르면 지도 중심을 해당 장소로 이동
+      // 결과를 누르면 해당 장소로 이동
       item.addEventListener("click", function() {
         const position = marker.getPosition();
-
         map.panTo(position);
         map.setLevel(4);
-
         openPlaceInfo(place, position);
       });
 
@@ -563,7 +520,6 @@
       const inputValue =
         document.getElementById("searchInput").value.trim();
 
-      // 입력한 검색어가 있으면 선택된 탭 키워드와 결합한다.
       const keyword = inputValue
         ? selectedKeyword + " " + inputValue
         : selectedKeyword;
@@ -575,7 +531,7 @@
           : kakao.maps.services.SortBy.ACCURACY
       };
 
-      // 현재 위치가 있으면 주변 20km 이내를 검색한다.
+      // 현재 위치가 있으면 주변 20km를 검색
       if (currentPosition) {
         options.location = currentPosition;
         options.radius = 20000;
@@ -584,7 +540,7 @@
       places.keywordSearch(
         keyword,
         function(data, status) {
-          // 이전 검색 결과가 늦게 도착한 경우 무시
+          // 이전 검색 요청의 늦은 결과는 무시
           if (requestId !== searchRequestId) {
             return;
           }
@@ -597,7 +553,6 @@
 
             setStatus("검색 결과 " + data.length + "개");
 
-            // 현재 위치가 없을 때 첫 결과를 기준으로 지도 이동
             if (!currentPosition && data.length > 0) {
               map.setCenter(
                 new kakao.maps.LatLng(data[0].y, data[0].x)
@@ -606,16 +561,20 @@
           } else if (
             status === kakao.maps.services.Status.ZERO_RESULT
           ) {
-            setStatus("검색 결과가 없어요. 다른 검색어를 입력해 보세요.");
+            setStatus(
+              "검색 결과가 없어요. 다른 검색어를 입력해 보세요."
+            );
           } else {
-            setStatus("검색 중 문제가 발생했어요. 다시 시도해 주세요.");
+            setStatus(
+              "검색 중 문제가 발생했어요. 다시 시도해 주세요."
+            );
           }
         },
         options
       );
     }
 
-    // 탭을 누르면 검색 종류 변경
+    // 탭 전환
     document.querySelectorAll(".tab").forEach(function(button) {
       button.addEventListener("click", function() {
         document.querySelectorAll(".tab").forEach(function(tab) {
@@ -624,7 +583,6 @@
 
         button.classList.add("active");
         selectedKeyword = button.dataset.keyword;
-
         document.getElementById("searchInput").value = "";
 
         searchPlaces();
@@ -637,7 +595,7 @@
       searchPlaces
     );
 
-    // 입력창에서 Enter를 눌러도 검색
+    // Enter 키로 검색
     document.getElementById("searchInput").addEventListener(
       "keydown",
       function(event) {
@@ -647,17 +605,14 @@
       }
     );
 
-    // SDK가 준비된 후 지도 실행
+    // 카카오맵 API 확인 후 지도 시작
     if (window.kakao && kakao.maps) {
       startMap();
     } else {
-      setStatus("카카오맵을 불러오지 못했어요. API 키와 도메인 설정을 확인해 주세요.");
+      setStatus(
+        "카카오맵을 불러오지 못했어요. API 키와 도메인 설정을 확인해 주세요."
+      );
     }
   </script>
 </body>
 </html>
-
-
-  
-
-       
